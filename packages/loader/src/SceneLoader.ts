@@ -11,7 +11,7 @@ import {
   ResourceManager,
   Scene,
   SkyBoxMaterial
-} from "@oasis-engine/core";
+} from "@galacean/engine-core";
 import { IClassObject, ReflectionParser, SceneParser } from "./resource-deserialize";
 
 @resourceLoader(AssetType.Scene, ["prefab"], true)
@@ -24,6 +24,7 @@ class SceneLoader extends Loader<Scene> {
           // @ts-ignore
           engine.resourceManager.initVirtualResources(data.files);
           return SceneParser.parse(engine, data).then((scene) => {
+            // parse ambient light
             const ambient = data.scene.ambient;
             let ambientLightPromise = Promise.resolve();
             if (ambient.ambientLight) {
@@ -56,7 +57,7 @@ class SceneLoader extends Loader<Scene> {
                   backgroundPromise = resourceManager.getResourceByRef<any>(background.sky).then((light) => {
                     const sky = scene.background.sky;
                     const skyMaterial = new SkyBoxMaterial(engine);
-                    skyMaterial.textureCubeMap = light.specularTexture;
+                    skyMaterial.texture = light.specularTexture;
                     skyMaterial.textureDecodeRGBM = true;
                     sky.material = skyMaterial;
                     sky.mesh = PrimitiveMesh.createCuboid(engine, 1, 1, 1);
@@ -72,6 +73,16 @@ class SceneLoader extends Loader<Scene> {
                 }
                 break;
             }
+
+            // parse shadow
+            const shadow = data.scene.shadow;
+            if (shadow) {
+              if (shadow.castShadows != undefined) scene.castShadows = shadow.castShadows;
+              if (shadow.shadowResolution != undefined) scene.shadowResolution = shadow.shadowResolution;
+              if (shadow.shadowDistance != undefined) scene.shadowDistance = shadow.shadowDistance;
+              if (shadow.shadowCascades != undefined) scene.shadowCascades = shadow.shadowCascades;
+            }
+
             return Promise.all([ambientLightPromise, backgroundPromise]).then(() => {
               resolve(scene);
             });
